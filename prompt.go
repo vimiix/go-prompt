@@ -2,6 +2,7 @@ package prompt
 
 import (
 	"bytes"
+	"errors"
 	"os"
 	"time"
 
@@ -229,8 +230,10 @@ func (p *Prompt) handleASCIICodeBinding(b []byte) bool {
 	return checked
 }
 
+var ErrQuit = errors.New("quit")
+
 // Input just returns user input text.
-func (p *Prompt) Input() string {
+func (p *Prompt) Input() (string, error) {
 	defer debug.Teardown()
 	debug.Log("start prompt")
 	p.setUp()
@@ -251,11 +254,11 @@ func (p *Prompt) Input() string {
 			if shouldExit, e := p.feed(b); shouldExit {
 				p.renderer.BreakLine(p.buf)
 				stopReadBufCh <- struct{}{}
-				return ""
+				return "", ErrQuit
 			} else if e != nil {
 				// Stop goroutine to run readBuffer function
 				stopReadBufCh <- struct{}{}
-				return e.input
+				return e.input, nil
 			} else {
 				p.completion.Update(*p.buf.Document())
 				p.renderer.Render(p.buf, p.completion)
